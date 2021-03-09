@@ -10,11 +10,21 @@ export default class AuthController {
         lastname: schema.string({ trim: true }),
         email: schema.string({ trim: true }, [
           rules.email(),
+          rules.lowerCase(), // convert to lowercase
           rules.unique({ table: 'users', column: 'email' }),
         ]),
         username: schema.string({ trim: true }, [
-          rules.unique({ table: 'users', column: 'username' }),
           rules.minLength(2),
+          rules.lowerCase(), // convert to lowercase
+          rules.blacklist([
+            'admin',
+            'super',
+            'root',
+            'agent',
+            'send-it',
+            'sendIt',
+          ]),
+          rules.unique({ table: 'users', column: 'username' }),
         ]),
         password: schema.string({}, [
           rules.minLength(8),
@@ -24,11 +34,13 @@ export default class AuthController {
       messages: {
         required: 'Please enter {{field}}',
         unique: 'User with the {{field}} already exists',
+        blacklist: 'User with the {{field}} already exists',
         'email.email': 'Please enter a valid email',
         'confirm_password.confirmed': 'Confirm password',
       },
     });
 
+    console.log(data);
     const new_user = await User.create(data);
     const { token } = await auth.attempt(data.email, data.password);
 
@@ -39,9 +51,13 @@ export default class AuthController {
     try {
       const valid_data = await request.validate({
         schema: schema.create({
-          email: schema.string.optional({}, [rules.email()]),
-          username: schema.string.optional({}, [
+          email: schema.string.optional({ trim: true }, [
+            rules.email(),
+            rules.lowerCase(),
+          ]),
+          username: schema.string.optional({ trim: true }, [
             rules.requiredIfNotExists('email'),
+            rules.lowerCase(),
           ]),
           password: schema.string(),
         }),
@@ -52,6 +68,7 @@ export default class AuthController {
         },
       });
 
+      console.log(valid_data);
       const type = valid_data.email ? 'email' : 'username';
       const value = valid_data.email || valid_data.username;
 
