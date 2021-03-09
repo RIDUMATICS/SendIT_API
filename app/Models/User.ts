@@ -1,6 +1,13 @@
 import { DateTime } from 'luxon';
 import Hash from '@ioc:Adonis/Core/Hash';
-import { column, beforeSave, BaseModel } from '@ioc:Adonis/Lucid/Orm';
+import {
+  column,
+  beforeSave,
+  BaseModel,
+  HasMany,
+  hasMany,
+} from '@ioc:Adonis/Lucid/Orm';
+import Parcel from './Parcel';
 
 export default class User extends BaseModel {
   @column({ isPrimary: true })
@@ -12,11 +19,15 @@ export default class User extends BaseModel {
   @column()
   public lastname: string;
 
-  @column()
+  @column({
+    prepare: (value: string) => value.toLowerCase(),
+    consume: (value: string) => value.toLowerCase(),
+  })
   public username: string;
 
   @column({
     prepare: (value: string) => value.toLowerCase(),
+    consume: (value: string) => value.toLowerCase(),
   })
   public email: string;
 
@@ -31,6 +42,11 @@ export default class User extends BaseModel {
 
   @column()
   public isAdmin: boolean;
+
+  @hasMany(() => Parcel, {
+    foreignKey: 'placedBy',
+  })
+  public parcels: HasMany<typeof Parcel>;
 
   @column.dateTime({
     autoCreate: true,
