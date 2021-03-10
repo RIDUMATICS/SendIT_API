@@ -24,3 +24,9 @@ Route.group(() => {
   Route.post('/register', 'AuthController.register');
   Route.post('/login', 'AuthController.login');
 }).prefix('auth');
+
+Route.group(() => {
+  Route.group(() => {
+    Route.post('parcels', 'ParcelsController.create');
+  }).middleware(['auth'])
+}).prefix('api/v1/');

@@ -6,7 +6,7 @@ export default class Parcel extends BaseModel {
   public id: number;
 
   // Foreign key
-  @column()
+  @column({ columnName: 'placedBy' })
   public placedBy: number;
 
   @column()
@@ -15,7 +15,7 @@ export default class Parcel extends BaseModel {
   @column()
   public weightmetric: string;
 
-  @column.date({ autoCreate: true })
+  @column.date({ autoCreate: true, columnName: 'sentOn' })
   public sentOn: DateTime;
 
   @column.date()
