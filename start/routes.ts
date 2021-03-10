@@ -25,8 +25,19 @@ Route.group(() => {
   Route.post('/login', 'AuthController.login');
 }).prefix('auth');
 
+// Route for user
 Route.group(() => {
-  Route.group(() => {
-    Route.post('parcels', 'ParcelsController.create');
-  }).middleware(['auth'])
-}).prefix('api/v1/');
+  Route.post('parcels', 'ParcelsController.create');
+  Route.get('user/parcels', 'ParcelsController.getUserParcels'); // get all parcels that belongs to the user
+  Route.get('user/parcels/:id', 'ParcelsController.getUserParcelDetails'); // get parcels details that belongs to the user
+})
+  .prefix('api/v1')
+  .middleware(['auth']);
+
+// Route for Admin
+Route.group(() => {
+  Route.get('parcels', 'ParcelsController.getParcels'); // admin get all parcels
+  Route.get('parcels/:id', 'ParcelsController.getParcelDetails'); //admin get any parcel details
+})
+  .prefix('api/v1')
+  .middleware(['auth', 'admin']);
