@@ -76,6 +76,7 @@ export default class ParcelsController {
         ]),
       }),
       messages: {
+        required: '{{field}} is required',
         number: 'Only number allowed',
         unsigned: 'Only positive number',
         exists: 'Parcel with the {{field}} does not exist',
@@ -110,5 +111,51 @@ export default class ParcelsController {
     const parcel = await Parcel.find(id);
 
     response.ok({ status: '200', data: parcel });
+  }
+
+  /*
+  Change the destination of a specific parcel delivery order. Only the user who
+  created the parcel should be able to change the destination of the parcel. A
+  parcel’s destination can only be changed if it is yet to be delivered.
+  */
+  public async updateDestination({
+    response,
+    request,
+    params,
+    auth,
+  }: HttpContextContract) {
+    const data = { ...request.all(), ...params };
+
+    const { id, to } = await validator.validate({
+      data,
+      schema: schema.create({
+        id: schema.number([
+          rules.unsigned(),
+          rules.exists({
+            table: 'parcels',
+            column: 'id',
+            where: { placedBy: auth.user?.id },
+          }),
+        ]),
+        to: schema.string(),
+      }),
+      messages: {
+        required: '{{field}} is required',
+        number: 'Only number allowed',
+        unsigned: 'Only positive number',
+        exists: 'Parcel with the {{field}} does not exist',
+      },
+    });
+
+    const parcel = await Parcel.find(id);
+    if (parcel) {
+      parcel.to = to;
+      const updatedParcel = await parcel.save();
+      response.ok({
+        status: 200,
+        message: '“Parcel destination updated',
+        data: updatedParcel,
+      });
+    }
   }
 }
