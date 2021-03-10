@@ -22,6 +22,7 @@ export default class AuthController {
             'root',
             'agent',
             'send-it',
+            'send_it',
             'sendIt',
           ]),
           rules.unique({ table: 'users', column: 'username' }),
@@ -40,8 +41,7 @@ export default class AuthController {
       },
     });
 
-    console.log(data);
-    const new_user = await User.create(data);
+    const new_user = await User.create({ ...data, isAdmin: false });
     const { token } = await auth.attempt(data.email, data.password);
 
     response.created({ status: 201, data: { user: new_user, token } });
@@ -68,7 +68,7 @@ export default class AuthController {
         },
       });
 
-      console.log(valid_data);
+
       const type = valid_data.email ? 'email' : 'username';
       const value = valid_data.email || valid_data.username;
 

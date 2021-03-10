@@ -40,7 +40,9 @@ export default class User extends BaseModel {
   })
   public register: DateTime;
 
-  @column()
+  @column({
+    columnName: 'isAdmin',
+  })
   public isAdmin: boolean;
 
   @hasMany(() => Parcel, {

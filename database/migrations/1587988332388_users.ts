@@ -12,7 +12,7 @@ export default class UsersSchema extends BaseSchema {
       table.string('email', 255).unique().notNullable();
       table.string('password', 180).notNullable();
       table.timestamp('register').notNullable();
-      table.boolean('isAdmin').defaultTo(false);
+      table.boolean('isAdmin').notNullable();
       table.timestamps(true);
     });
   }
