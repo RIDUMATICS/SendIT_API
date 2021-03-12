@@ -1,6 +1,7 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext';
 import { schema, rules } from '@ioc:Adonis/Core/Validator';
 import User from 'App/Models/user';
+import { MyReporter } from 'App/Validators/Reporters/MyReporter';
 
 export default class AuthController {
   public async register({ request, response, auth }: HttpContextContract) {
@@ -11,7 +12,6 @@ export default class AuthController {
         email: schema.string({ trim: true }, [
           rules.email(),
           rules.lowerCase(), // convert to lowercase
-          rules.unique({ table: 'users', column: 'email' }),
         ]),
         username: schema.string({ trim: true }, [
           rules.minLength(2),
@@ -23,9 +23,8 @@ export default class AuthController {
             'agent',
             'send-it',
             'send_it',
-            'sendIt',
+            'sendit',
           ]),
-          rules.unique({ table: 'users', column: 'username' }),
         ]),
         password: schema.string({}, [
           rules.minLength(8),
@@ -35,11 +34,27 @@ export default class AuthController {
       messages: {
         required: 'Please enter {{field}}',
         unique: 'User with the {{field}} already exists',
-        blacklist: 'User with the {{field}} already exists',
+        blacklist: 'Username is not available please try another one',
         'email.email': 'Please enter a valid email',
         'confirm_password.confirmed': 'Confirm password',
       },
+      reporter: MyReporter,
     });
+
+    const user = await User.query()
+      .where('email', data.email)
+      .orWhere('username', data.username);
+
+    if (user.length > 0) {
+      let message = '';
+      // check if it is the email or username
+      if (user[0].email === data.email) {
+        message = 'User with the email already registered';
+      } else if (user[0].username === data.username) {
+        message = 'Username is not available please try another one';
+      }
+      return response.conflict({ status: 409, message });
+    }
 
     const new_user = await User.create({ ...data, isAdmin: false });
     const { token } = await auth.attempt(data.email, data.password);
@@ -67,7 +82,6 @@ export default class AuthController {
           requiredIfNotExists: 'Enter email or username',
         },
       });
-
 
       const type = valid_data.email ? 'email' : 'username';
       const value = valid_data.email || valid_data.username;
