@@ -31,6 +31,7 @@ Route.group(() => {
   Route.get('user/parcels', 'ParcelsController.getUserParcels'); // get all parcels that belongs to the user
   Route.get('user/parcels/:id', 'ParcelsController.getUserParcelDetails'); // get parcels details that belongs to the user
   Route.patch('parcels/:id/destination', 'ParcelsController.updateDestination');
+  Route.patch('parcels/:id/cancel', 'ParcelsController.cancelDelivery');
 })
   .prefix('api/v1')
   .middleware(['auth']);
