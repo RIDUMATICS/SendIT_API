@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
-import { BaseModel, column } from '@ioc:Adonis/Lucid/Orm';
+import { BaseModel, belongsTo, BelongsTo, column } from '@ioc:Adonis/Lucid/Orm';
+import User from './user';
 
 export default class Parcel extends BaseModel {
   @column({ isPrimary: true })
@@ -32,6 +33,11 @@ export default class Parcel extends BaseModel {
 
   @column()
   public currentLocation: string;
+
+  @belongsTo(() => User, {
+    foreignKey: 'placedBy',
+  })
+  public user: BelongsTo<typeof User>;
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime;

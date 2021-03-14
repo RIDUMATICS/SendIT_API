@@ -1,6 +1,7 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext';
 import { rules, schema, validator } from '@ioc:Adonis/Core/Validator';
 import Parcel from 'App/Models/Parcel';
+import { MyReporter } from 'App/Validators/Reporters/MyReporter';
 
 export default class ParcelsController {
   // Create a parcel delivery order.. { auth: [ user ] }
@@ -12,16 +13,20 @@ export default class ParcelsController {
         from: schema.string(),
         to: schema.string(),
       }),
+      messages: {
+        required: '{{field}} is {{rule}}',
+        number: 'Only number allowed',
+        unsigned: 'Only positive number',
+      },
+      reporter: MyReporter,
     });
 
-    if (auth.user && auth.user.id) {
-      const parcel = await Parcel.create({
-        ...data,
-        placedBy: auth.user.id,
-        status: 'placed',
-      });
-      response.created({ status: 201, data: { parcel } });
-    }
+    const parcel = await Parcel.create({
+      ...data,
+      placedBy: auth.user!.id,
+      status: 'placed',
+    });
+    response.created({ status: 201, data: { parcel } });
   }
 
   // Fetch all parcel delivery orders { auth: [ admin] }
@@ -44,17 +49,12 @@ export default class ParcelsController {
     const page = request.input('page', 1);
     const limit = request.input('limit', 10);
 
-    if (auth.user) {
-      const resp = await Parcel.query()
-        .where('placedBy', auth.user.id)
-        .paginate(page, limit);
-      const { meta, data } = resp.toJSON();
-      return response.ok({ status: 200, data, meta }); // meta contains details for pagination
-    }
-    response.unauthorized({
-      status: 401,
-      error: 'Unauthorized',
-    });
+    const resp = await Parcel.query()
+      .where('placedBy', auth.user!.id)
+      .paginate(page, limit);
+
+    const { meta, data } = resp.toJSON();
+    return response.ok({ status: 200, data, meta }); // meta contains details for pagination
   }
 
   // Fetch a specific delivery order owned by the user. { auth: [ user ] }
@@ -66,24 +66,25 @@ export default class ParcelsController {
     const { id } = await validator.validate({
       data: params,
       schema: schema.create({
-        id: schema.number([
-          rules.unsigned(),
-          rules.exists({
-            table: 'parcels',
-            column: 'id',
-            where: { placedBy: auth.user?.id },
-          }),
-        ]),
+        id: schema.number([rules.unsigned()]),
       }),
       messages: {
-        required: '{{field}} is required',
+        required: '{{field}} is {{rule}}',
         number: 'Only number allowed',
         unsigned: 'Only positive number',
-        exists: 'Parcel with the {{field}} does not exist',
       },
+      reporter: MyReporter,
     });
 
-    const parcel = await Parcel.find(id);
+    const parcel = await Parcel.query()
+      .where('id', id)
+      .andWhere('placedBy', auth.user!.id)
+      .preload('user')
+      .first();
+
+    if (!parcel) {
+      return response.notFound({ status: 404, message: 'Parcel not found' });
+    }
 
     response.ok({ status: '200', data: parcel });
   }
@@ -93,22 +94,21 @@ export default class ParcelsController {
     const { id } = await validator.validate({
       data: params,
       schema: schema.create({
-        id: schema.number([
-          rules.unsigned(),
-          rules.exists({
-            table: 'parcels',
-            column: 'id',
-          }),
-        ]),
+        id: schema.number([rules.unsigned()]),
       }),
       messages: {
-        number: 'Only number allowed',
-        unsigned: 'Only positive number',
-        exists: 'Parcel with the {{field}} does not exist',
+        required: '{{field}} is {{rule}}',
+        number: 'Only numbers are allowed',
+        unsigned: 'Only positive numbers',
       },
+      reporter: MyReporter,
     });
 
-    const parcel = await Parcel.find(id);
+    const parcel = await Parcel.query().where('id', id).preload('user').first();
+
+    if (!parcel) {
+      return response.notFound({ status: 404, message: 'Parcel not found' });
+    }
 
     response.ok({ status: '200', data: parcel });
   }
@@ -129,33 +129,69 @@ export default class ParcelsController {
     const { id, to } = await validator.validate({
       data,
       schema: schema.create({
-        id: schema.number([
-          rules.unsigned(),
-          rules.exists({
-            table: 'parcels',
-            column: 'id',
-            where: { placedBy: auth.user?.id },
-          }),
-        ]),
+        id: schema.number([rules.unsigned()]),
         to: schema.string(),
       }),
       messages: {
-        required: '{{field}} is required',
+        required: '{{field}} is {{rule}}',
         number: 'Only number allowed',
         unsigned: 'Only positive number',
-        exists: 'Parcel with the {{field}} does not exist',
       },
+      reporter: MyReporter,
     });
 
-    const parcel = await Parcel.find(id);
-    if (parcel) {
-      parcel.to = to;
-      const updatedParcel = await parcel.save();
-      response.ok({
-        status: 200,
-        message: '“Parcel destination updated',
-        data: updatedParcel,
-      });
+    const parcel = await Parcel.query()
+      .where('id', id)
+      .andWhere('placedBy', auth.user!.id)
+      .first();
+
+    if (!parcel) {
+      return response.notFound({ status: 404, message: 'Parcel not found' });
     }
+
+    // update delivery destination
+    parcel.to = to;
+
+    const updatedParcel = await parcel.save();
+
+    response.ok({
+      status: 200,
+      message: 'Parcel destination updated',
+      data: updatedParcel,
+    });
+  }
+
+  // Cancel a specific parcel delivery order.
+  public async cancelDelivery({ response, params, auth }: HttpContextContract) {
+    const { id } = await validator.validate({
+      data: params,
+      schema: schema.create({
+        id: schema.number([rules.unsigned()]),
+      }),
+      messages: {
+        required: '{{field}} is {{rule}}',
+        number: 'Only number allowed',
+        unsigned: 'Only positive number',
+      },
+      reporter: MyReporter,
+    });
+
+    const parcel = await Parcel.query()
+      .where('id', id)
+      .andWhere('placedBy', auth.user!.id)
+      .first();
+
+    if (!parcel) {
+      return response.notFound({ status: 404, message: 'Parcel not found' });
+    }
+
+    parcel.status = 'cancelled';
+    const cancelledParcel = await parcel.save();
+
+    response.ok({
+      status: 200,
+      message: 'Parcel destination updated',
+      data: cancelledParcel,
+    });
   }
 }

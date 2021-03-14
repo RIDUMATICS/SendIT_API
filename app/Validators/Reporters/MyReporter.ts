@@ -4,9 +4,9 @@ import {
 } from '@ioc:Adonis/Core/Validator';
 import ValidationException from 'App/Exceptions/ValidationException';
 
-type ErrorMessage = string[];
+type ErrorMessage = string | string[];
 type ErrorNode = {
-  error: ErrorMessage;
+  message: ErrorMessage;
   status: number;
 };
 
@@ -16,7 +16,7 @@ export class MyReporter implements ErrorReporterContract<ErrorNode> {
   /**
    * Tracking reported errors
    */
-  private errors: ErrorMessage = [];
+  private error: ErrorMessage = '';
 
   constructor(private messages: MessagesBagContract, private bail: boolean) {}
 
@@ -50,7 +50,17 @@ export class MyReporter implements ErrorReporterContract<ErrorNode> {
     /**
      * Track error message
      */
-    this.errors.push(errorMessage);
+
+    if (typeof this.error === 'string') {
+      if (this.error === '') {
+        this.error = errorMessage;
+      } else {
+        this.error = [this.error];
+        this.error.push(errorMessage);
+      }
+    } else {
+      this.error.push(errorMessage);
+    }
 
     /**
      * Bail mode means, stop validation on the first
@@ -73,7 +83,7 @@ export class MyReporter implements ErrorReporterContract<ErrorNode> {
    */
   public toJSON() {
     return {
-      error: this.errors,
+      message: this.error,
       status: 400,
     };
   }
