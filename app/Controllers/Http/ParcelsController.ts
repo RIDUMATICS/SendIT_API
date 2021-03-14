@@ -26,7 +26,11 @@ export default class ParcelsController {
       placedBy: auth.user!.id,
       status: 'placed',
     });
-    response.created({ status: 201, data: { parcel } });
+    response.created({
+      status: 201,
+      message: 'order created',
+      data: { parcel },
+    });
   }
 
   // Fetch all parcel delivery orders { auth: [ admin] }
@@ -190,8 +194,46 @@ export default class ParcelsController {
 
     response.ok({
       status: 200,
-      message: 'Parcel destination updated',
+      message: 'order canceled',
       data: cancelledParcel,
+    });
+  }
+
+  public async updateStatus({
+    request,
+    params,
+    response,
+  }: HttpContextContract) {
+    const data = { ...request.all(), ...params };
+
+    const { id, status } = await validator.validate({
+      data,
+      schema: schema.create({
+        id: schema.number([rules.unsigned()]),
+        status: schema.enum(['placed', 'transiting', 'delivered']),
+      }),
+      messages: {
+        required: '{{field}} is {{rule}}',
+        enum: 'Not accepted use [placed, transiting, delivered]',
+        number: 'Only number allowed',
+        unsigned: 'Only positive number',
+      },
+      reporter: MyReporter,
+    });
+
+    const parcel = await Parcel.find(id);
+
+    if (!parcel) {
+      return response.notFound({ status: 404, message: 'Parcel not found' });
+    }
+
+    parcel.status = status;
+    const updatedParcel = await parcel.save();
+
+    response.ok({
+      status: 200,
+      message: 'Parcel status updated',
+      data: updatedParcel,
     });
   }
 }
