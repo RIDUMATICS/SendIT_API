@@ -2,6 +2,7 @@ import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext';
 import { rules, schema, validator } from '@ioc:Adonis/Core/Validator';
 import Parcel from 'App/Models/Parcel';
 import { MyReporter } from 'App/Validators/Reporters/MyReporter';
+import { DateTime } from 'luxon';
 
 export default class ParcelsController {
   // Create a parcel delivery order.. { auth: [ user ] }
@@ -199,6 +200,8 @@ export default class ParcelsController {
     });
   }
 
+  //   Change the status of a specific parcel delivery order. Only the Admin is allowed to access this endpoint.
+
   public async updateStatus({
     request,
     params,
@@ -227,12 +230,63 @@ export default class ParcelsController {
       return response.notFound({ status: 404, message: 'Parcel not found' });
     }
 
+    if (parcel.status === 'cancelled') {
+      return response.unprocessableEntity({
+        status: 422,
+        message: 'Order has been cancelled',
+      });
+    }
+
+    if (status === 'delivered') {
+      parcel.deliveredOn = DateTime.now();
+    }
+
     parcel.status = status;
     const updatedParcel = await parcel.save();
 
     response.ok({
       status: 200,
       message: 'Parcel status updated',
+      data: updatedParcel,
+    });
+  }
+
+  // Change the present location of a specific parcel delivery order. Only the Admin is allowed to access this endpoint.
+  public async updateCurrentLocation({
+    response,
+    request,
+    params,
+  }: HttpContextContract) {
+    const data = { ...request.all(), ...params };
+
+    const { id, currentLocation } = await validator.validate({
+      data,
+      schema: schema.create({
+        id: schema.number([rules.unsigned()]),
+        currentLocation: schema.string(),
+      }),
+      messages: {
+        required: '{{field}} is {{rule}}',
+        number: 'Only number allowed',
+        unsigned: 'Only positive number',
+      },
+      reporter: MyReporter,
+    });
+
+    const parcel = await Parcel.find(id);
+
+    if (!parcel) {
+      return response.notFound({ status: 404, message: 'Parcel not found' });
+    }
+
+    // update delivery destination
+    parcel.currentLocation = currentLocation;
+
+    const updatedParcel = await parcel.save();
+
+    response.ok({
+      status: 200,
+      message: 'Parcel location updated',
       data: updatedParcel,
     });
   }

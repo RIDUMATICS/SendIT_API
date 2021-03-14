@@ -41,6 +41,10 @@ Route.group(() => {
   Route.get('parcels', 'ParcelsController.getParcels'); // admin get all parcels
   Route.get('parcels/:id', 'ParcelsController.getParcelDetails'); //admin get any parcel details
   Route.patch('parcels/:id/status', 'ParcelsController.updateStatus');
+  Route.patch(
+    'parcels/:id/currentlocation',
+    'ParcelsController.updateCurrentLocation'
+  );
 })
   .prefix('api/v1')
   .middleware(['auth', 'admin']);
