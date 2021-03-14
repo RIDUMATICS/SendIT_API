@@ -19,7 +19,7 @@ export default class Parcel extends BaseModel {
   @column.date({ autoCreate: true, columnName: 'sentOn' })
   public sentOn: DateTime;
 
-  @column.date()
+  @column.date({ columnName: 'deliveredOn' })
   public deliveredOn: DateTime;
 
   @column({ prepare: (value: string) => value.toLowerCase() })
@@ -31,7 +31,7 @@ export default class Parcel extends BaseModel {
   @column()
   public to: string;
 
-  @column()
+  @column({ columnName: 'currentLocation' })
   public currentLocation: string;
 
   @belongsTo(() => User, {
