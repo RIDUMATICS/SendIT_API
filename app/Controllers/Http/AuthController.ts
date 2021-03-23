@@ -53,37 +53,26 @@ export default class AuthController {
   }
 
   public async login({ response, request, auth }: HttpContextContract) {
-    try {
-      const { email, password } = await request.validate({
-        schema: schema.create({
-          email: schema.string({ trim: true }, [rules.email(), rules.lowerCase()]),
-          password: schema.string(),
-        }),
-        messages: {
-          email: 'Enter a valid {{rule}}',
-          required: '{{field}} is {{rule}}',
-        },
-        reporter: MyReporter,
-      })
+    const { email, password } = await request.validate({
+      schema: schema.create({
+        email: schema.string({ trim: true }, [rules.email(), rules.lowerCase()]),
+        password: schema.string(),
+      }),
+      messages: {
+        email: 'Enter a valid {{rule}}',
+        required: '{{field}} is {{rule}}',
+      },
+      reporter: MyReporter,
+    })
 
-      const user = await User.findBy('email', email)
-
-      if (!user) {
-        return response.notFound({
+    return auth
+      .attempt(email, password)
+      .then(({ user, token }) => response.ok({ status: 200, data: { user, token } }))
+      .catch(() =>
+        response.notFound({
           status: 404,
-          error: `The email or password you entered did not match our records.`,
+          message: `The email or password you entered did not match our records.`,
         })
-      }
-
-      const { token } = await auth.attempt(email, password)
-      response.ok({ status: 200, data: { user, token } })
-    } catch (error) {
-      if (error.code === 'E_INVALID_AUTH_UID' || error.code === 'E_INVALID_AUTH_PASSWORD') {
-        return response.notFound({
-          status: 404,
-          error: `The email or password you entered did not match our records.`,
-        })
-      }
-    }
+      )
   }
 }
